@@ -11,7 +11,6 @@ on:
 env:
   BUILD_TYPE: Release
   RELEASE_ZIP: pico-cec-${{github.ref_name}}.zip
-  RELEASE_BOARD: seeed_xiao_rp2040
 
 jobs:
   format:
@@ -36,6 +35,7 @@ jobs:
       matrix:
         pico_board:
           - seeed_xiao_rp2040
+          - seeed_xiao_rp2350
           - waveshare_rp2040_zero
           - vcc_gnd_yd_2040
 
@@ -55,7 +55,7 @@ jobs:
         sudo apt install --no-install-recommends -y gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/${{matrix.pico_board}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPICO_CEC_VERSION=${{github.ref_name}}
+      run: cmake -B ${{github.workspace}}/${{matrix.pico_board}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPICO_CEC_VERSION=${{github.ref_name}} -DPICO_BOARD=${{matrix.pico_board}}
 
     - name: Build Pico-CEC
       run: cmake --build ${{github.workspace}}/${{matrix.pico_board}} --config ${{env.BUILD_TYPE}} --parallel
@@ -117,13 +117,14 @@ jobs:
     - name: Generate release hashes
       run: |
         ls -lR
-        mv pico-cec-${{env.RELEASE_BOARD}}-${{github.run_id}}/pico-cec.uf2 .
+        mv pico-cec-seeed_xiao_rp2040-${{github.run_id}}/pico-cec.uf2 pico-cec-seeed_xiao_rp2040-${{github.ref_name}}.uf2
+        mv pico-cec-seeed_xiao_rp2350-${{github.run_id}}/pico-cec.uf2 pico-cec-seeed_xiao_rp2350-${{github.ref_name}}.uf2
         mv pico-cec-stl-${{github.run_id}}/*.stl .
-        sha256sum pico-cec.uf2 *.stl > sha256sum.txt
+        sha256sum pico-cec*.uf2 *.stl > sha256sum.txt
 
     - name: Compress release assets
       run: |
-        zip ${{env.RELEASE_ZIP}} pico-cec.uf2 *.stl sha256sum.txt
+        zip ${{env.RELEASE_ZIP}} pico-cec*.uf2 *.stl sha256sum.txt
 
     - name: Release
       uses: softprops/action-gh-release@v2

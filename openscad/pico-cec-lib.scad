@@ -1,3 +1,5 @@
+include <BOSL2/std.scad>
+
 $fa = 1;
 $fs = $preview ? 2 : 0.5;
 
@@ -91,7 +93,7 @@ module base() {
     difference() {
         union() {
             difference() {
-                cube([32, 40.5+1.5, 9], true);
+                cuboid([32, 40.5+1.5, 9], chamfer=1, edges=BOTTOM);
                 translate([0, 0, 1.5])
                     cube([32-3, 40.5+1.5-3, 9-1.5], true);
                 translate([0, 4.1, 1.5])
@@ -102,14 +104,14 @@ module base() {
                     cube([15.0, 3, 3], true);
             }
             // posts
-            translate([11, 13.0, -4.5])
-                cylinder(5, r=5);
-            translate([11, -4.0, -4.5])
-                cylinder(5, r=5);
-            translate([-11, 13.0, -4.5])
-                cylinder(5, r=5);
-            translate([-11, -4.0, -4.5])
-                cylinder(5, r=5);
+            translate([11, 13.0, -3.5])
+                cylinder(4, r=5);
+            translate([11, -4.0, -3.5])
+                cylinder(4, r=5);
+            translate([-11, 13.0, -3.5])
+                cylinder(4, r=5);
+            translate([-11, -4.0, -3.5])
+                cylinder(4, r=5);
         }
         // bolt
         translate([11, 13.0, -4.55])
@@ -135,7 +137,7 @@ module base() {
 module middle() {
     union() {
         difference() {
-            cube([32, 40.5+1.5, 4], true);
+            cuboid([32, 40.5+1.5, 4], chamfer=1, edges=TOP+BACK+LEFT+RIGHT);
             // bolt
             translate([11, 13.0, -2.55])
                 cylinder(5.1, r=1.6);
@@ -158,6 +160,8 @@ module middle() {
             // hdmi adapter pins
             translate([0, 4, 0])
                 cube([27.8, 8, 4.05], true);
+            translate([0, 0, 0])
+                cube([15.0, 8, 4.05], true);
         }
         // usb-c port bottom half
         translate([0, -20.25, (4+2.9)/2])
@@ -175,9 +179,17 @@ module middle() {
         }
 }
 
+module pusher() {
+    union() {
+      cylinder(h=8.0,r=1.5);
+      translate([0, 0, 1.5])
+          cylinder(h=4.6/2, r1=2.0, r2=1.5);
+    }
+}
+
 module top() {
     difference() {
-        cube([32,30, 9], true);
+        cuboid([32,30, 9], chamfer=1, edges=TOP);
         translate([0, -2.5, -3])
             cube([32-3, 30-8.5, 9-3], true);
         translate([0, -13.25, -1.5 ])
@@ -195,11 +207,24 @@ module top() {
             head_m3();
         translate([11, 2, 2.5])
             head_m3();
-        // led/button slot
-        translate([0, 6.7, 2.2])
-            cube([15, 3, 5], true);
+
+        // R button shaft
+        translate([5.0, 7.5, -2.0])
+            scale([1.15, 1.15, 1.1]) pusher();
+        translate([5.0, 7.5, -5.0])
+            cylinder(h=5,r=2.3);
+        // B button shaft
+        translate([-5.0, 7.5, -2.0])
+            scale([1.15, 1.15, 1.1]) pusher();
+        translate([-5.0, 7.5, -5.0])
+            cylinder(h=5,r=2.3);
+
         // power led
         translate([-6, -10, -0.3])
+            cylinder(5, r=1.5);
+
+        // RGB led
+        translate([0, 6, -0.3])
             cylinder(5, r=1.5);
     }
 }
