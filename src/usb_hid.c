@@ -47,7 +47,7 @@ void usb_task(void *param) {
   // init device stack on configured roothub port
   // This should be called after scheduler/kernel is started.
   // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
-  tud_init(BOARD_TUD_RHPORT);
+  tusb_init(BOARD_TUD_RHPORT, NULL);
 
   // RTOS forever loop
   while (1) {

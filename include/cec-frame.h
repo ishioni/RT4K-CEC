@@ -5,7 +5,7 @@
 #include "task.h"
 
 #ifndef CEC_PIN
-#define CEC_PIN 3  // GPIO3 == D10 (Seeed Studio XIAO RP2040)
+#define CEC_PIN 3  // GPIO3 == D10 (Seeed Studio XIAO RP2350)
 #endif
 
 /* Maximum length of CEC frame in bytes. */

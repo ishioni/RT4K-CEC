@@ -34,20 +34,12 @@ jobs:
       fail-fast: false
       matrix:
         pico_board:
-          - seeed_xiao_rp2040
           - seeed_xiao_rp2350
-          - waveshare_rp2040_zero
-          - vcc_gnd_yd_2040
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
-
-    - name: Clone tinyusb
-      shell: bash
-      run: |
-        cd pico-sdk && git submodule update --init lib/tinyusb
 
     - name: Install required packages
       shell: bash
@@ -119,7 +111,6 @@ jobs:
     - name: Generate release hashes
       run: |
         ls -lR
-        mv pico-cec-seeed_xiao_rp2040-${{github.run_id}}/pico-cec.uf2 pico-cec-seeed_xiao_rp2040-${{github.ref_name}}.uf2
         mv pico-cec-seeed_xiao_rp2350-${{github.run_id}}/pico-cec.uf2 pico-cec-seeed_xiao_rp2350-${{github.ref_name}}.uf2
         mv pico-cec-stl-${{github.run_id}}/*.stl .
         sha256sum pico-cec*.uf2 *.stl > sha256sum.txt

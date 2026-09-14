@@ -1,0 +1,20 @@
+# Project-local task shortcuts. Homebrew owns the build dependencies; mise is
+# only used to make the setup and build commands repeatable.
+
+[tasks.setup]
+description = "Install the Homebrew dependencies from Brewfile"
+run = "brew bundle --file=Brewfile"
+
+[tasks.configure]
+description = "Configure the XIAO RP2350 firmware build"
+depends = ["setup"]
+run = "cmake -S . -B build -G Ninja -DPICO_BOARD=seeed_xiao_rp2350"
+
+[tasks.build]
+description = "Build the XIAO RP2350 firmware"
+depends = ["configure"]
+run = "cmake --build build --parallel"
+
+[tasks.clean]
+description = "Remove the local firmware build directory"
+run = "/bin/rm -rf build"

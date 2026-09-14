@@ -2,19 +2,22 @@ cmake_minimum_required(VERSION 3.13)
 
 set(PROJECT pico-cec)
 set(BOARD "pico_sdk") # Configure TinyUSB use pico-sdk board configuration
-set(PICO_BOARD "seeed_xiao_rp2040" CACHE STRING "Raspberry Pi Pico board type.")
-
-#set(PICO_BOARD "seeed_xiao_rp2350" CACHE STRING "Raspberry Pi Pico board type.")
-#set(PICO_BOARD "waveshare_rp2040_zero" CACHE STRING "Raspberry Pi Pico board type.")
-#set(PICO_BOARD "vcc_gnd_yd_2040" CACHE STRING "Raspberry Pi Pico board type.")
-#set(PICO_BOARD "pico" CACHE STRING "Raspberry Pi Pico board type.")
+set(PICO_BOARD "seeed_xiao_rp2350" CACHE STRING "Raspberry Pi Pico board type.")
+set(PICO_TINYUSB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb" CACHE PATH "TinyUSB source tree.")
 
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/boards)
 
 # Include pico-sdk and tinyusb (must be before project)
 include(pico-sdk/pico_sdk_init.cmake)
-include(pico-sdk/lib/tinyusb/hw/bsp/family_support.cmake)
-family_get_project_name(PROJECT ${PROJECT})
+include(${PICO_TINYUSB_PATH}/hw/bsp/family_support.cmake)
+
+# TinyUSB 0.21's RP2040-family BSP supplies a default FreeRTOS stack-overflow
+# hook. Keep this project's LED diagnostic hook as the application hook and
+# give the unused TinyUSB default a private symbol to avoid a duplicate.
+set_source_files_properties(
+  ${PICO_TINYUSB_PATH}/hw/bsp/rp2040/family.c
+  PROPERTIES COMPILE_DEFINITIONS
+  vApplicationStackOverflowHook=tinyusb_vApplicationStackOverflowHook)
 
 project(${PROJECT}
   DESCRIPTION "HDMI CEC to USB HID keyboard adapter."
@@ -23,12 +26,10 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 # Include FreeRTOS kernel
-if(${PICO_PLATFORM} STREQUAL "rp2040")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/ThirdParty/GCC/RP2040)
-elseif(${PICO_PLATFORM} STREQUAL "rp2350-arm-s")
+if(PICO_PLATFORM STREQUAL "rp2350-arm-s")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/ThirdParty/GCC/RP2350_ARM_NTZ)
 else()
-message(FATAL_ERROR "Unsupport Pico platform: ${PICO_PLATFORM}")
+message(FATAL_ERROR "Unsupported Pico platform: ${PICO_PLATFORM}; this project targets the XIAO RP2350.")
 endif()
 
 # Include CRC library

@@ -2,3 +2,4 @@ build
 generated
 *.stl
 .vscode
+.cache/

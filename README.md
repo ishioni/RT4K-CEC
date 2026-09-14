@@ -7,7 +7,7 @@ Control) and USB HID keyboard control (especially for use with Kodi).
 
 ## Update January 2026
 
-The reference hardware for `pico-cec` has been upgraded from RP2040 to RP2350. Support for RP2040 builds will continue where possible.
+The reference hardware for `pico-cec` is the Seeed Studio XIAO RP2350.
 
 ## Motivation
 
@@ -37,52 +37,42 @@ In this project we use a Pico to both:
 > The build quality of the HDMI breakout boards is highly variable, thus pass through of 4K video may not function in all circumstances.
 
 ## Cloning
-To avoid cloning unneeded code, clone like this:
-```
-git -c submodule.active="lib/tinyusb" -c submodule.active=":(exclude,glob){lib,hw}/*" clone --recurse-submodules
-```
-
-Alternatively, clone everything in pico-sdk and tinyUSB:
+Clone the project and its pinned dependencies recursively:
 ```
 git clone --recurse-submodules
 ```
 
 ## Building
-This project uses the 'normal' CMake based build.  
-The build depends on cmake (obviously), gcc-arm-none-eabi, and libnewlib-dev.
-
-Two boards are supported, and the RP2040 and RP2350 produce incompatible
-`.uf2` images, so build for the board you actually have:
+This project uses the normal CMake build with Ninja and the Arm GNU embedded
+toolchain. Homebrew manages the required native build tools from the included
+`Brewfile`:
 ```
-$ git clone <blah blah as above>
-$ cd pico-cec
+$ brew bundle --file=Brewfile
 ```
 
-For the Seeed XIAO RP2350 (current reference hardware):
+The project-local mise configuration provides repeatable setup and build task
+shortcuts. It does not manage tool versions:
 ```
-$ cmake -S . -B build -DPICO_BOARD=seeed_xiao_rp2350 && cmake --build build
-```
-
-For the Seeed XIAO RP2040 (legacy):
-```
-$ cmake -S . -B build -DPICO_BOARD=seeed_xiao_rp2040 && cmake --build build
+$ mise run setup
 ```
 
-Switching boards requires a clean build directory (`rm -rf build`).
+Build the Seeed XIAO RP2350 firmware:
+```
+$ mise run build
+```
+
+Reconfiguring from scratch requires a clean build directory (`rm -rf build`).
 
 ### Customising the Build
-The CMake project supports three options:
-* PICO_BOARD: specify variant of Pico board, defaults to Seeed XIAO RP2350 (potential values [here](https://github.com/raspberrypi/pico-sdk/tree/master/src/boards/include/boards))
 * CEC_PIN: specify GPIO pin for HDMI CEC, defaults to GPIO3
 * CEC_OSD_NAME: specify the OSD string for HDMI input Pico-CEC is controlling, defaults to "Pico-CEC"
 Example invocation to specify:
-* use Raspberry Pi Pico development board
 * use GPIO pin 11
 * use OSD_NAME "Bazzite"
 
 ```
-$ cmake -DPICO_BOARD=pico -DCEC_PIN=11 -DCEC_OSD_NAME="Bazzite" ..
-$ make
+$ cmake -S . -B build -G Ninja -DCEC_PIN=11 -DCEC_OSD_NAME="Bazzite"
+$ cmake --build build
 ```
 
 ## Installing
@@ -158,7 +148,7 @@ An exploded preview of the result can be found in this [STL](openscad/pico-cec.s
 
 
 ### Assembly
-![XIAO RP2040 with HDMI pass through and DDC.](https://github.com/user-attachments/assets/01c244b4-b5af-4926-94d2-38306876485b)
+![XIAO board with HDMI pass through and DDC.](https://github.com/user-attachments/assets/01c244b4-b5af-4926-94d2-38306876485b)
 
 ![Partially assembled Pico-CEC.](https://github.com/user-attachments/assets/c37bb127-409a-4ed1-acc1-4e83cf8a6d58)
 

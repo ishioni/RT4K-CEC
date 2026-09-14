@@ -10,3 +10,6 @@
 [submodule "openscad/BOSL2"]
 	path = openscad/BOSL2
 	url = https://github.com/BelfrySCAD/BOSL2.git
+[submodule "tinyusb"]
+	path = tinyusb
+	url = https://github.com/hathach/tinyusb.git
