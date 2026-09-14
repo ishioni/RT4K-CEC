@@ -11,8 +11,8 @@
 #include "cec-frame.h"
 #include "cec-log.h"
 #include "cec-task.h"
-#include "usb-cdc.h"
-#include "usb_hid.h"
+#include "debug.h"
+#include "rt4k-serial.h"
 #include "ws2812.h"
 
 int main() {
@@ -21,28 +21,27 @@ int main() {
 
   static StackType_t stackLED[LED_STACK_SIZE];
   static StackType_t stackCEC[CEC_STACK_SIZE];
-  static StackType_t stackHID[HID_STACK_SIZE];
-  static StackType_t stackCDC[CDC_STACK_SIZE];
+  static StackType_t stackSerial[CDC_STACK_SIZE];
   static StackType_t stackUSB[USB_STACK_SIZE];
 
   static StaticTask_t xLEDTCB;
   static StaticTask_t xCECTCB;
-  static StaticTask_t xHIDTCB;
   static StaticTask_t xUSBTCB;
-  static StaticTask_t xCDCTCB;
+  static StaticTask_t xSerialTCB;
 
   static TaskHandle_t xUSBTask;
-  static TaskHandle_t xHIDTask;
-  static TaskHandle_t xCDCTask;
+  static TaskHandle_t xSerialTask;
 
   blink_init();
 
   stdio_init_all();
   board_init();
+  debug_init();
 
   alarm_pool_init_default();
 
-  // HID key queue
+  // CEC user-control queue. The RT4K serial task consumes the mapped HID
+  // usage values produced by the upstream CEC configuration layer.
   QueueHandle_t cec_q;
   cec_q = xQueueCreateStatic(CEC_QUEUE_LENGTH, sizeof(uint8_t), &storageCECQueue[0], &xCECQueue);
 
@@ -50,20 +49,18 @@ int main() {
                                  &stackLED[0], &xLEDTCB);
   xCECTask = xTaskCreateStatic(cec_task, CEC_TASK_NAME, CEC_STACK_SIZE, &cec_q, CEC_PRIORITY,
                                &stackCEC[0], &xCECTCB);
-  xHIDTask = xTaskCreateStatic(hid_task, HID_TASK_NAME, HID_STACK_SIZE, &cec_q, HID_PRIORITY,
-                               &stackHID[0], &xHIDTCB);
-  xUSBTask = xTaskCreateStatic(usb_task, USB_TASK_NAME, USB_STACK_SIZE, NULL, USB_PRIORITY,
+  xUSBTask = xTaskCreateStatic(rt4k_serial_host_task, USB_TASK_NAME, USB_STACK_SIZE, NULL, USB_PRIORITY,
                                &stackUSB[0], &xUSBTCB);
-  xCDCTask = xTaskCreateStatic(cdc_task, CDC_TASK_NAME, CDC_STACK_SIZE, NULL, CDC_PRIORITY,
-                               &stackCDC[0], &xCDCTCB);
+  xSerialTask = xTaskCreateStatic(rt4k_serial_task, CDC_TASK_NAME, CDC_STACK_SIZE, &cec_q, CDC_PRIORITY,
+                                  &stackSerial[0], &xSerialTCB);
 
   (void)xBlinkTask;
   (void)xCECTask;
-  (void)xHIDTask;
   (void)xUSBTask;
-  (void)xCDCTask;
+  (void)xSerialTask;
 
-  cec_log_init(cdc_log);
+  cec_log_init(debug_puts);
+  cec_log_enable();
 
   vTaskStartScheduler();
 

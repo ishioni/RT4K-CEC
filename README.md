@@ -1,37 +1,24 @@
-# Pico-CEC
+# RT4K-CEC
 
-A Raspberry Pi Pico based project to bridge HDMI CEC (Consumer Electronics
-Control) and USB HID keyboard control (especially for use with Kodi).
+A Seeed Studio XIAO RP2350 project that bridges HDMI CEC remote-control input
+to the RetroTINK 4K's USB serial control interface.
 
 ![Fully assembled Pico-CEC.](https://github.com/user-attachments/assets/7b971a8d-e5fd-4bc1-8ff5-a342004288a5)
 
 ## Update January 2026
 
-The reference hardware for `pico-cec` is the Seeed Studio XIAO RP2350.
-
-## Motivation
-
-Micro/mini desktops are plentiful as second hand, budget friendly media players,
-especially when installed with Kodi (eg. LibreELEC).
-However, many of these devices do not support HDMI-CEC and require the user to
-use additional peripherals (eg. wireless keyboard, game controller).
-
-In this project we use a Pico to both:
-* handle the CEC protocol on the HDMI port
-* adapt the user control messages into USB keyboard inputs
+The reference hardware is the Seeed Studio XIAO RP2350.
 
 ## What Works
 * HDMI CEC frame send and receive
 * EDID parsing to determine HDMI physical address
-* LibreELEC recognises Pico-CEC as an USB HID keyboard
-* HDMI CEC basic user control messages are properly mapped to Kodi shortcuts,
-  including:
-   * navigations arrows
-   * select
-   * back
-   * play
-   * pause
-   * numbers 0-9
+* TinyUSB USB host mode on the XIAO RP2350
+* FTDI CDC host support for the RetroTINK 4K
+* RT4K commands at 2,000,000 baud, 8-N-1, newline terminated
+* UART diagnostics on XIAO D6/TX0 and D7/RX0 at 115200 baud
+
+Hardware validation against a physical RetroTINK 4K and TV/AVR remote is still
+pending.
  
 > [!CAUTION]
 > The build quality of the HDMI breakout boards is highly variable, thus pass through of 4K video may not function in all circumstances.
@@ -78,14 +65,11 @@ $ cmake --build build
 ## Installing
 Assuming a successful build, the build directory will contain `pico-cec.uf2`,
 this can be written to the Pico as per normal:
-* connect the Pico to computer via USB cable
+* connect the XIAO to a computer via USB cable
 * reset the Pico by holding 'Boot' and pressing 'Reset'
    * Pico now presents as a USB mass storage device
 * copy `pico-cec.uf2` to the Pico
 * disconnect
-
-A command line interface over serial port is available, the guide can be found
-here: [Command Line Interface Guide](https://github.com/gkoh/pico-cec/wiki/Command-Line-Interface-Guide)
 
 ## Blinking Lights
 The RGB LED provides basic functional diagnosis:
@@ -97,15 +81,11 @@ The RGB LED provides basic functional diagnosis:
 If there are no lights, something is very wrong.
 If this occurs, please consider raising an issue.
 
-# Real World Usage
-This is currently working with:
-* a Sharp 60" TV (physical address 0x1000)
-   * directly connected to TV HDMI input 1
-* through a Denon AVR connected to the Sharp TV (physical address 0x1100)
-   * Pico-CEC connected to Denon AVR HDMI input 1
-   * Denon AVR connected to TV HDMI input 1
-* a Sony 60" TV (physical address 0x1000)
-   * directly connected to TV HDMI input 1
+# CEC validation history
+
+The underlying CEC engine has been exercised with Sharp and Sony TVs and
+through a Denon AVR. RT4K USB serial and remote-control behavior still needs
+physical hardware validation.
 
 # Design
 ## Hardware
@@ -133,10 +113,18 @@ For the Seeed Studio XIAO RP2350:
 ### Schematic
 ![Basic schematic.](https://github.com/user-attachments/assets/61a759ca-198a-4f6b-a60f-0255d08b8441)
 
-After this we:
-* connect `Pico-CEC` to the HDMI output of the PC
-* connect the HDMI cable from the TV to `Pico-CEC`
-* connect a USB cable from `Pico-CEC` to the PC
+For the RT4K connection, use a USB-C splitter: feed the RT4K's existing power
+source into the power input and connect the XIAO's USB host port to the RT4K
+USB-C data input. The XIAO can be powered from HDMI pin 18 while its USB-C
+connector is used for host data.
+
+For diagnostics, connect a 3.3 V TTL UART adapter only after the firmware is
+ready to test:
+* XIAO D6/TX0 (GPIO0) --> adapter RX
+* XIAO D7/RX0 (GPIO1) --> adapter TX
+* XIAO GND --> adapter GND
+
+Do not connect the adapter's VCC pin.
 
 ### Prototype
 
@@ -153,13 +141,15 @@ An exploded preview of the result can be found in this [STL](openscad/pico-cec.s
 ![Partially assembled Pico-CEC.](https://github.com/user-attachments/assets/c37bb127-409a-4ed1-acc1-4e83cf8a6d58)
 
 ## Software
-The software is extremely simple and built on FreeRTOS tasks:
+The software is built on FreeRTOS tasks:
 * cec_task
-   * interact with HDMI CEC sending user control message inputs to a queue
-* hid_task
-   * read the user control messages from the queue and send to the USB task
-* usbd_task
-   * generate an HID keyboard input for the USB host
+   * interact with HDMI CEC and send mapped user-control values to a queue
+* rt4k_serial_task
+   * translate queued controls into RT4K serial commands
+* rt4k_serial_host_task
+   * run the TinyUSB host stack and FTDI CDC transport
+* debug/log task
+   * send CEC and USB diagnostics to the dedicated TTL UART
 * blink_task
    * heart beat, no blink == no work
 
@@ -181,18 +171,12 @@ to meet real-time constraints.
 Attempts to increase the FreeRTOS tick timer along with busy wait loops were
 simply unable to consistently meet the CEC timing windows.
 
-## hid_task and usbd_task
-
-These are simple FreeRTOS tasks effectively taken straight from the TinyUSB
-examples.
-
 ## Dependencies
 This project uses:
 * [crc](https://github.com/gityf/crc)
 * [FreeRTOS-Kernel](https://github.com/FreeRTOS/FreeRTOS-Kernel)
 * [pico-sdk](https://github.com/raspberrypi/pico-sdk)
    * [tinyusb](https://github.com/hathach/tinyusb)
-* [tcli](https://github.com/dpse/tcli)
 
 # Hardware
 * Seeed Studio XIAO RP2350 (chosen for form factor)
@@ -228,11 +212,10 @@ Furthermore, `pico-cec` has been able to survive one hour of cec-compliance fuzz
 testing.
 
 # Debugging
-A command line terminal over serial port is supported.
-Details can be found in the wiki entry:
-https://github.com/gkoh/pico-cec/wiki/Command-Line-Interface-Guide
 
-In particular, `debug on` will log all CEC traffic to the terminal.
+Diagnostics are emitted on the dedicated 3.3 V TTL UART described above. The
+USB-C port is reserved for the RT4K host connection, so it is not a firmware
+CLI connection.
 
 # Future
 * implement CEC send and receive in PIO

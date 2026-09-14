@@ -1,10 +1,10 @@
+#include <string.h>
+
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
 
-#include "class/hid/hid.h"
 #include "pico/stdlib.h"
-#include "tusb.h"
 
 #include "blink.h"
 #include "cec-config.h"
@@ -15,8 +15,8 @@
 #include "ddc.h"
 #include "nvs.h"
 
-/* Intercept HDMI CEC commands, convert to a keypress and send to HID task
- * handler.
+/* Intercept HDMI CEC commands, convert to a mapped control value and send it
+ * to the RT4K serial task.
  *
  * Significantly rewritten from the initial Arduino version by Szymon Slupik:
  * https://github.com/SzymonSlupik/CEC-Tiny-Pro
@@ -276,7 +276,6 @@ void cec_task(void *param) {
 
   while (true) {
     cec_message_t msg = {0x0};
-    uint8_t key = HID_KEY_NONE;
     uint8_t no_active = 0;
 
     cec_frame_recv(&msg, laddr);
@@ -438,8 +437,6 @@ void cec_task(void *param) {
         case CEC_ID_USER_CONTROL_RELEASED:
           if (destination == laddr) {
             blink_set(BLINK_STATE_OFF);
-            key = HID_KEY_NONE;
-            xQueueSend(*q, &key, pdMS_TO_TICKS(10));
           }
           break;
         case CEC_ID_ABORT:

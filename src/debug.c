@@ -1,62 +1,55 @@
+#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "task.h"
-
-#include "hardware/timer.h"
+#include "hardware/gpio.h"
+#include "hardware/uart.h"
 #include "pico/stdlib.h"
 
-#include "cec-frame.h"
-#include "cec-task.h"
+#include "debug.h"
 
-#define BLINK_STACK_SIZE (128)
-#define CEC_STACK_SIZE (512)
-#define CEC_QUEUE_LENGTH (16)
+#define DEBUG_UART uart0
+#define DEBUG_UART_BAUD_RATE 115200
+#define DEBUG_UART_TX_PIN 0
+#define DEBUG_UART_RX_PIN 1
 
-static void blink_task(void *param) {
-  static uint32_t blink_delay = 1000;
-  static bool state = true;
+void debug_init(void) {
+  uart_init(DEBUG_UART, DEBUG_UART_BAUD_RATE);
+  gpio_set_function(DEBUG_UART_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(DEBUG_UART_RX_PIN, GPIO_FUNC_UART);
+}
 
-  while (true) {
-    gpio_put(PICO_DEFAULT_LED_PIN, state);
-    state = !state;
-    vTaskDelay(pdMS_TO_TICKS(blink_delay));
+void debug_write(const char *data, size_t length) {
+  if (data == NULL) {
+    return;
+  }
+
+  for (size_t i = 0; i < length; i++) {
+    uart_putc_raw(DEBUG_UART, data[i]);
   }
 }
 
-int main() {
-  static StaticQueue_t xStaticCECQueue;
-  static uint8_t storageCECQueue[CEC_QUEUE_LENGTH * sizeof(uint8_t)];
+void debug_puts(const char *str) {
+  if (str == NULL) {
+    return;
+  }
 
-  static StackType_t stackBlink[BLINK_STACK_SIZE];
-  static StackType_t stackCEC[CEC_STACK_SIZE];
+  debug_write(str, strlen(str));
+}
 
-  static StaticTask_t xBlinkTCB;
-  static StaticTask_t xCECTCB;
+void debug_printf(const char *fmt, ...) {
+  char buffer[192];
+  va_list ap;
 
-  static TaskHandle_t xBlinkTask;
+  va_start(ap, fmt);
+  int length = vsnprintf(buffer, sizeof(buffer), fmt, ap);
+  va_end(ap);
 
-  stdio_init_all();
-
-  alarm_pool_init_default();
-
-  gpio_init(PICO_DEFAULT_LED_PIN);
-  gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-
-  // HID key queue
-  QueueHandle_t cec_q =
-      xQueueCreateStatic(CEC_QUEUE_LENGTH, sizeof(uint8_t), &storageCECQueue[0], &xStaticCECQueue);
-
-  xBlinkTask = xTaskCreateStatic(blink_task, "Blink Task", BLINK_STACK_SIZE, NULL, 1,
-                                 &stackBlink[0], &xBlinkTCB);
-  xCECTask = xTaskCreateStatic(cec_task, CEC_TASK_NAME, CEC_STACK_SIZE, &cec_q,
-                               configMAX_PRIORITIES - 1, &stackCEC[0], &xCECTCB);
-
-  (void)xBlinkTask;
-  (void)xCECTask;
-
-  vTaskStartScheduler();
-
-  return 0;
+  if (length > 0) {
+    size_t bytes = (size_t)length;
+    if (bytes >= sizeof(buffer)) {
+      bytes = sizeof(buffer) - 1;
+    }
+    debug_write(buffer, bytes);
+  }
 }

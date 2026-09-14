@@ -40,23 +40,6 @@ pico_sdk_init()
 
 add_compile_options(-Wall -Werror)
 
-set(TCLI_SOURCE_DIR ${PROJECT_SOURCE_DIR}/tcli)
-
-add_library(tcli STATIC
-  ${TCLI_SOURCE_DIR}/source/tcli.c
-  ${TCLI_SOURCE_DIR}/source/tclie.c)
-
-target_include_directories(tcli PUBLIC
-  ${TCLI_SOURCE_DIR}/include)
-
-target_compile_definitions(tcli PUBLIC
-  TCLI_COMPLETE=1
-  TCLIE_ENABLE_USERS=0
-  TCLIE_PATTERN_MATCH=1)
-
-target_compile_options(tcli PRIVATE
-  -Wno-stringop-truncation)
-
 add_executable(${PROJECT}
   src/blink.c
   src/cec-config.c
@@ -64,13 +47,12 @@ add_executable(${PROJECT}
   src/cec-log.c
   src/cec-task.c
   src/cec-user.c
+  src/debug.c
   src/ddc.c
   src/freertos_hook.c
   src/main.c
   src/nvs.c
-  src/usb-cdc.c
-  src/usb_descriptors.c
-  src/usb_hid.c
+  src/rt4k-serial.c
   src/util.c
   src/ws2812.c
   src/ws2812.pio)
@@ -86,14 +68,11 @@ target_include_directories(${PROJECT} PRIVATE
 
 set(CEC_PIN "3" CACHE STRING "GPIO pin for HDMI CEC.")
 set(PICO_CEC_VERSION "unknown" CACHE STRING "Pico-CEC version string.")
-set(KEYMAP_DEFAULT "KODI" CACHE STRING "Default keymap, specify KODI or MISTER.")
+set(KEYMAP_DEFAULT "MISTER" CACHE STRING "Default keymap, specify KODI or MISTER.")
 set(CEC_OSD_NAME "Pico-CEC" CACHE STRING "OSD name for the CEC device (max 14 characters).")
 
 set_source_files_properties(src/cec-frame.c PROPERTIES COMPILE_DEFINITIONS
   "CEC_PIN=${CEC_PIN}")
-
-set_source_files_properties(src/usb-cdc.c PROPERTIES COMPILE_DEFINITIONS
-  "PICO_CEC_VERSION=\"${PICO_CEC_VERSION}\"")
 
 set_source_files_properties(src/nvs.c PROPERTIES COMPILE_DEFINITIONS
   "CEC_OSD_NAME=\"${CEC_OSD_NAME}\"")
@@ -109,10 +88,10 @@ target_link_libraries(${PROJECT}
   pico_unique_id
   hardware_i2c
   hardware_pio
-  tinyusb_device
+  hardware_uart
+  tinyusb_host
   tinyusb_board
-  FreeRTOS-Kernel
-  tcli)
+  FreeRTOS-Kernel)
 
 pico_add_extra_outputs(${PROJECT})
 pico_set_binary_type(${PROJECT} copy_to_ram)
